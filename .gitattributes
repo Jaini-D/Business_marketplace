@@ -1,0 +1,10 @@
+# Set default behavior to LF
+* text=auto eol=lf
+
+# Explicitly set Windows line endings for some files (optional)
+*.bat text eol=crlf
+
+# For binary files
+*.png binary
+*.jpg binary
+*.gif binary
