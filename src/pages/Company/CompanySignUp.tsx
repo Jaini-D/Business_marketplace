@@ -1,8 +1,11 @@
-import React, { use, useState, type FormEvent } from 'react'
-import { auth, db } from '../config/firebase';
-import { addDoc, collection, getDoc, getDocs, query, where } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useState, type FormEvent } from 'react'
+import { auth, db } from '../../config/firebase';
+import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
+
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const CompanySignUp = () => {
   
@@ -20,9 +23,13 @@ const CompanySignUp = () => {
          try {
             e.preventDefault();
             
+
             if (password !== confirmPassword) {
                 setPasswordError("Passwords dont match!")
+            } else if (password.length < 6){
+                setPasswordError("Password needs to be atleast 6 characters");
             } else {
+                const toastId = toast.loading("Creating Account!");
                 setPasswordError('');
 
                 const doc = query(collection(db, 'users'), where('companyEmail', '==', companyEmail));
@@ -33,17 +40,38 @@ const CompanySignUp = () => {
                     setCompanyEmailError('');
                     console.log("Company doesnt exist");
 
-                    addDoc(collection(db, 'users'), {
+                    const result = await addDoc(collection(db, 'users'), {
                         companyEmail,
                         primaryEmail,
                     });
 
-                    createUserWithEmailAndPassword(auth, primaryEmail, password);
+                    console.log(result);
+                    console.log(result.id);
+                    localStorage.setItem("companyDocRef", result.id);
+                    console.log(`Primary Email: ${primaryEmail}`);
+                    const userCredentials = await createUserWithEmailAndPassword(auth, primaryEmail, password);
+                    
+                    if (userCredentials) {
+                        const employeeResult = addDoc(collection(db, 'employees'), {
+                            employeeEmail: primaryEmail,
+                            companyEmail,
+                            companyUID: result.id
+                        });
+
+                        console.log(employeeResult);
+                    }
+
+                    await signInWithEmailAndPassword(auth, primaryEmail, password);
 
                     console.log("Created Account!")
-                    alert("Created Account!")
-
-                    navigate('/company/signup/submitDetails')
+                    // alert("Created Account!")
+                    toast.update(toastId, {
+                        render: "Account Created!",
+                        type: "success",
+                        isLoading: false,
+                        autoClose: 1000
+                    });
+                    navigate('/company/signup/submitDetails');
                     
                 } else {
                     console.log("Company exists");
